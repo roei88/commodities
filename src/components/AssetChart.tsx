@@ -25,10 +25,12 @@ export default function AssetChart({
   commodityId,
   unit,
   onDataLoaded,
+  onError,
 }: {
   commodityId: string;
   unit: string;
   onDataLoaded?: (d: ChartData) => void;
+  onError?: (msg: string | null) => void;
 }) {
   const [range, setRange] = useState<Range>("1M");
   const [data, setData] = useState<ChartData | null>(null);
@@ -45,16 +47,30 @@ export default function AssetChart({
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
-    setLoading(true);
+    // Reset stale state immediately so the previous commodity's chart doesn't
+    // linger while the new one loads (or errors).
+    setData(null);
+    setHover(null);
     setError(null);
+    // Destroy the previous uPlot instance so its canvas doesn't stay on screen
+    // showing the old commodity's line during the fetch.
+    plotRef.current?.destroy();
+    plotRef.current = null;
+    setLoading(true);
     fetch(`/api/chart/${commodityId}?range=${range}`, { signal: ac.signal })
       .then((r) => r.ok ? r.json() : r.json().then((j) => Promise.reject(new Error(j.error ?? `HTTP ${r.status}`))))
       .then((d: ChartData) => {
         setData(d);
-        setHover(null);
+        onError?.(null);
         onDataLoaded?.(d);
       })
-      .catch((e: any) => { if (e?.name !== "AbortError") setError(e?.message ?? "chart fetch failed"); })
+      .catch((e: any) => {
+        if (e?.name !== "AbortError") {
+          const msg = e?.message ?? "chart fetch failed";
+          setError(msg);
+          onError?.(msg);
+        }
+      })
       .finally(() => setLoading(false));
     return () => ac.abort();
   }, [commodityId, range]);

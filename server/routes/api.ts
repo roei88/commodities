@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { startRun, getRun, subscribe } from "../runs.ts";
 import { loadRegistry, listDedicatedPlans, resolvePlanFor, getCommodity, validateRawPlan } from "../plans/resolver.ts";
 import { getChart, type ChartRange } from "../engine/data/chart.ts";
+import { fredMonthlyAsBars } from "../engine/data/fred.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = join(__dirname, "..", "..", "plans", "assets");
@@ -104,11 +105,36 @@ api.get("/chart/:commodityId", async (req, res) => {
   if (!c) return res.status(404).json({ error: "unknown commodity" });
   const rawRange = String(req.query.range ?? "1M").toUpperCase() as ChartRange;
   if (!RANGES.includes(rawRange)) return res.status(400).json({ error: "invalid range", allowed: RANGES });
+  // Try Yahoo first; if it fails and the commodity has a FRED series (e.g. Robusta
+  // via PCOFFROBUSDM), synthesize monthly-as-daily bars so we still show a chart
+  // labelled honestly as monthly.
   try {
     const chart = await getChart(c.symbol, rawRange);
-    res.json(chart);
-  } catch (e: any) {
-    res.status(502).json({ error: e?.message ?? "chart fetch failed" });
+    return res.json(chart);
+  } catch (yahooErr: any) {
+    if (c.fredSeries) {
+      try {
+        const bars = await fredMonthlyAsBars(c.fredSeries, 400);
+        if (bars.length) {
+          const first = bars[0].close;
+          const last = bars[bars.length - 1].close;
+          return res.json({
+            symbol: c.fredSeries,
+            range: rawRange,
+            interval: "1mo",
+            candles: bars.map((b) => ({ t: new Date(b.date).getTime(), o: b.open, h: b.high, l: b.low, c: b.close })),
+            lastPrice: last,
+            previousClose: first,
+            changePct: first ? ((last - first) / first) * 100 : null,
+            source: `FRED ${c.fredSeries} (monthly, no daily feed available)`,
+            monthly: true,
+          });
+        }
+      } catch (fredErr: any) {
+        return res.status(502).json({ error: `Yahoo: ${yahooErr?.message ?? "failed"} / FRED: ${fredErr?.message ?? "failed"}` });
+      }
+    }
+    return res.status(502).json({ error: yahooErr?.message ?? "chart fetch failed" });
   }
 });
 

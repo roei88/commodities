@@ -26,6 +26,7 @@ export default function App() {
   const runCommodityRef = useRef<string | null>(null);
   const logBoxRef = useRef<HTMLDivElement>(null);
   const [commoditiesError, setCommoditiesError] = useState<string | null>(null);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/commodities")
@@ -77,6 +78,7 @@ export default function App() {
     setStatus("idle");
     setResult(null);
     setLog([]);
+    setChartError(null);
   }
 
   function run() {
@@ -231,24 +233,40 @@ export default function App() {
             {status === "running" ? "Running…" : "Run research"}
           </button>
         </div>
-        {commodity && (
-          <div className="art-frame">
-            <div className="art-backdrop" aria-hidden>
-              <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
-            </div>
-            <div className="art-foreground">
-              {!(commodity as any).dataUnavailable ? (
-                <AssetChart commodityId={commodity.id} unit={commodity.unit} />
-              ) : (
-                <div className="asset-chart-msg">Live chart unavailable for this commodity.</div>
+        {commodity && (() => {
+          const unavailable = !!(commodity as any).dataUnavailable;
+          const dimmed = unavailable || !!chartError;
+          return (
+            <div className={`art-frame ${dimmed ? "art-frame-dimmed" : ""}`}>
+              {dimmed && (
+                <div className="art-error-row" role="status">
+                  <span className="art-error-icon" aria-hidden>⚠</span>
+                  <span className="art-error-text">
+                    {unavailable
+                      ? ((commodity as any).dataUnavailableReason ?? "Live chart unavailable for this commodity.")
+                      : `Live chart unavailable · ${chartError}`}
+                  </span>
+                </div>
               )}
-              <div className="art-caption">
-                <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
-                <span>{themeFor(commodity.id).name}</span>
+              <div className="art-backdrop" aria-hidden>
+                <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
+              </div>
+              <div className="art-foreground">
+                {!unavailable && (
+                  <AssetChart
+                    commodityId={commodity.id}
+                    unit={commodity.unit}
+                    onError={setChartError}
+                  />
+                )}
+                <div className="art-caption">
+                  <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
+                  <span>{themeFor(commodity.id).name}</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         </div>
 
         {/* Tabs */}
