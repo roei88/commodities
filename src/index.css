@@ -616,7 +616,16 @@ body {
 .section-frame.section-tldr .section-body { font-size: 14.5px; }
 
 .section-frame.section-redflags,
-.section-frame.section-invalidation { grid-column: 1 / -1; }
+.section-frame.section-invalidation,
+.section-frame.section-setup,
+.section-frame.section-fanchart,
+.section-frame.section-ladder { grid-column: 1 / -1; }
+
+/* Data frames (client-rendered fan chart + ladder) need to expose the
+   chart/table directly instead of the markdown text styling. */
+.section-frame.section-data .data-body { padding-top: 4px; }
+.section-frame.section-fanchart .uplot-wrap { width: 100%; }
+.section-frame.section-ladder .ladder-v2 { max-height: 340px; }
 
 /* Small internal chips inside each section (numeric callouts) */
 .section-body strong {
@@ -633,11 +642,11 @@ body {
   box-shadow: 0 20px 40px -30px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-/* Report grid: hide the OLD single blob column when using the new sections view */
-.report-grid.v2 { grid-template-columns: 1fr 380px; }
-@media (max-width: 1100px) { .report-grid.v2 { grid-template-columns: 1fr; } }
-
-.data-column { display: flex; flex-direction: column; gap: 16px; }
+/* Report layout: single stacked column. The old right-hand data-column
+   left a huge empty vertical gap next to the taller report-sections stack;
+   we now inline the fan chart + ladder into the sections flow so nothing
+   goes unfilled. */
+.report-column { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .card.data > h3 {
   margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;
 }

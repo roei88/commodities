@@ -278,46 +278,38 @@ export default function App() {
         )}
 
         {tab === "report" && result && (
-          <div className="report-grid v2">
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="report-toolbar">
-                <CommodityArt id={result.commodity.id} className="art-badge" ariaLabel={themeFor(result.commodity.id).name} />
-                <span className="commodity-badge">
-                  <span className="glyph">{themeFor(result.commodity.id).glyph}</span>
-                  <strong>{result.commodity.label}</strong>
-                  <span style={{ opacity: 0.6 }}>· {result.commodity.venue} · {result.commodity.unit}</span>
+          <div className="report-column">
+            <div className="report-toolbar">
+              <CommodityArt id={result.commodity.id} className="art-badge" ariaLabel={themeFor(result.commodity.id).name} />
+              <span className="commodity-badge">
+                <span className="glyph">{themeFor(result.commodity.id).glyph}</span>
+                <strong>{result.commodity.label}</strong>
+                <span style={{ opacity: 0.6 }}>· {result.commodity.venue} · {result.commodity.unit}</span>
+              </span>
+              {result.confidence && (
+                <span className={`confidence-pill ${result.confidence.label}`}>
+                  Confidence: {result.confidence.label} · {result.confidence.score}/10
                 </span>
-                {result.confidence && (
-                  <span className={`confidence-pill ${result.confidence.label}`}>
-                    Confidence: {result.confidence.label} · {result.confidence.score}/10
-                  </span>
-                )}
-                <div style={{ flex: 1 }} />
-                <button className="btn-sm" onClick={exportMd}>Export .md</button>
-                <button className="btn-sm" onClick={exportHtml}>Export .html</button>
-              </div>
-              {result.sections && result.sections.length ? (
-                <ReportView sections={result.sections} />
-              ) : (
-                <div className="card hero">
-                  <div className="markdown" dangerouslySetInnerHTML={{ __html: reportHtml }} />
-                </div>
               )}
+              <div style={{ flex: 1 }} />
+              <button className="btn-sm" onClick={exportMd}>Export .md</button>
+              <button className="btn-sm" onClick={exportHtml}>Export .html</button>
             </div>
-            <div className="data-column">
-              {result.montecarlo && (
-                <div className="card data">
-                  <h3>Monte-Carlo fan</h3>
+            {result.sections && result.sections.length ? (
+              <ReportView
+                sections={result.sections}
+                fanChart={result.montecarlo && (
                   <FanChart fan={result.montecarlo.fan} spot={result.montecarlo.spot} unit={result.commodity.unit} />
-                </div>
-              )}
-              {result.montecarlo && (
-                <div className="card data">
-                  <h3>Interval ladder ({result.commodity.unit})</h3>
+                )}
+                ladder={result.montecarlo && (
                   <IntervalLadder rows={result.montecarlo.ladder} unit={result.commodity.unit} />
-                </div>
-              )}
-            </div>
+                )}
+              />
+            ) : (
+              <div className="card hero">
+                <div className="markdown" dangerouslySetInnerHTML={{ __html: reportHtml }} />
+              </div>
+            )}
           </div>
         )}
 
