@@ -9,6 +9,7 @@ import ReportView from "./components/ReportView.tsx";
 import CommodityArt from "./components/CommodityArt.tsx";
 import AssetChart from "./components/AssetChart.tsx";
 import MarketNote from "./components/MarketNote.tsx";
+import ProcessingBlocker from "./components/ProcessingBlocker.tsx";
 
 type CommodityWithPlan = CommodityMeta & { planResolution: string };
 type Status = "idle" | "running" | "done" | "error";
@@ -88,6 +89,7 @@ export default function App() {
     setStatus("running");
     setLog([]);
     setResult(null);
+    setTab("report"); // open the Report tab immediately; the processing blocker covers it
     closeRef.current?.();
     const commodityAtStart = selected;
     runCommodityRef.current = commodityAtStart;
@@ -302,10 +304,10 @@ export default function App() {
           </button>
           <button
             className={`tab ${tab === "report" ? "active" : ""}`}
-            disabled={!result}
+            disabled={!result && status !== "running"}
             onClick={() => setTab("report")}
           >
-            Report {result ? "✓" : ""}
+            Report {status === "running" ? "…" : result ? "✓" : ""}
           </button>
         </div>
 
@@ -318,6 +320,17 @@ export default function App() {
                 <span className="m">{l.msg}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "report" && !result && status === "running" && (
+          <ProcessingBlocker step={[...log].reverse().find((l) => l.level === "step")?.msg} />
+        )}
+
+        {tab === "report" && !result && status === "error" && (
+          <div className="processing-blocker error">
+            <div className="pb-title" style={{ color: "var(--red)" }}>Report could not be generated</div>
+            <div className="pb-step">{[...log].reverse().find((l) => l.level === "error")?.msg ?? "The run failed. Check the Activity log."}</div>
           </div>
         )}
 
