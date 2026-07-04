@@ -28,25 +28,27 @@ export default function FanChart({ fan, spot, unit }: { fan: FanPoint[]; spot: n
       cursor: { drag: { x: false, y: false } },
       legend: { show: true },
       scales: { x: { time: false } },
-      axes: [
-        {
-          stroke: "#9aa4b2",
-          grid: { stroke: "#232a33" },
-          values: (_u, splits) => splits.map((s) => (s === 0 ? "now" : `D${s}`)),
-        },
-        { stroke: "#9aa4b2", grid: { stroke: "#232a33" } },
-      ],
+      // Series-level fill on edge series would extend the paint down to y=0; keep
+      // strokes only on the edge series and let the `bands` array own all fill.
       series: [
         {},
-        { label: "p95", stroke: "transparent", fill: "rgba(76,141,255,0.10)", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
-        { label: "p5", stroke: "transparent", fill: "rgba(76,141,255,0.10)", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
-        { label: "p75", stroke: "transparent", fill: "rgba(76,141,255,0.22)", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
-        { label: "p25", stroke: "transparent", fill: "rgba(76,141,255,0.22)", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
+        { label: "p95", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
+        { label: "p5", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
+        { label: "p75", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
+        { label: "p25", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
         { label: "median", stroke: "#4c8dff", width: 2, value: (_u: uPlot, v: number | null) => fmt(v, unit) },
       ],
       bands: [
         { series: [1, 2], fill: "rgba(76,141,255,0.10)" },
         { series: [3, 4], fill: "rgba(76,141,255,0.22)" },
+      ],
+      axes: [
+        {
+          stroke: "#9aa4b2",
+          grid: { stroke: "#232a33" },
+          values: (_u, splits) => splits.map((s) => (Number.isInteger(s) ? (s === 0 ? "now" : `D${s}`) : "")),
+        },
+        { stroke: "#9aa4b2", grid: { stroke: "#232a33" } },
       ],
     };
 

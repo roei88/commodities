@@ -1,10 +1,32 @@
 import type { Bands, PlanAsset, Technicals } from "../../shared/types.ts";
 
+export interface BandsInput {
+  realizedVolPct: number | null;
+  impliedVolPct: number | null;
+}
+
 // Expected-move bands via the vol-scaled random-walk: move = spot * vol * sqrt(t/252).
-// Reported at each sigma level in the plan (1.0 = ~68%, 1.65 = ~90%).
-export function computeBands(spot: number, tech: Technicals, plan: PlanAsset): Bands[] {
-  const volPct = tech.realizedVolAnnualPct; // annualized %
-  if (volPct == null || spot <= 0) return [];
+// Vol source honors plan.bands.volSource ("implied" -> use IV, else realized).
+// Returns per-horizon bands plus which vol source was used and its value.
+export interface ComputedBands {
+  bands: Bands[];
+  volUsedPct: number | null;
+  volSourceUsed: "implied" | "realized" | "unavailable";
+  impliedVolPct: number | null;
+  realizedVolPct: number | null;
+}
+
+export function computeBands(spot: number, tech: Technicals, plan: PlanAsset, iv?: BandsInput): ComputedBands {
+  const realized = tech.realizedVolAnnualPct ?? iv?.realizedVolPct ?? null;
+  const implied = iv?.impliedVolPct ?? null;
+  const preferImplied = plan.bands.volSource === "implied";
+  const volPct = preferImplied && implied != null ? implied : realized;
+  const volSourceUsed: ComputedBands["volSourceUsed"] =
+    volPct == null ? "unavailable" : preferImplied && implied != null ? "implied" : "realized";
+
+  if (volPct == null || spot <= 0) {
+    return { bands: [], volUsedPct: null, volSourceUsed, impliedVolPct: implied, realizedVolPct: realized };
+  }
   const vol = volPct / 100;
   const out: Bands[] = [];
   for (const [horizon, days] of Object.entries(plan.bands.horizons)) {
@@ -18,7 +40,7 @@ export function computeBands(spot: number, tech: Technicals, plan: PlanAsset): B
       sigma90: [round(spot - s90 * sigmaMove), round(spot + s90 * sigmaMove)],
     });
   }
-  return out;
+  return { bands: out, volUsedPct: volPct, volSourceUsed, impliedVolPct: implied, realizedVolPct: realized };
 }
 
 function round(n: number): number {

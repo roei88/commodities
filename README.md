@@ -1,19 +1,28 @@
 # Commodity Research
 
-A local-first, **deterministic** commodity price-target research app. Pick a commodity and an analysis span, hit **Run**, and a server-side pipeline fetches live market data and computes a full price-target report — expected-move bands, a regime read + signal stack, a seeded Monte-Carlo fan chart, an interval price-target ladder, and COT positioning — streaming its activity live and rendering an exportable Markdown report.
+A local-first, **deterministic** commodity price-target research app. Pick a commodity and an analysis span, hit **Run**, and a server-side pipeline fetches live market data and computes a rich price-target report — layered TL;DR + Detail — streaming its activity live and rendering an exportable Markdown document.
 
-No LLM, no API key required to start, no per-run cost. The research methodology is encoded as **plan assets** (JSON), executed mechanically.
+No LLM, no API key required to start, no per-run cost. The research methodology is encoded as **plan assets** (JSON), executed mechanically. The engine and the report were designed so a first-time reader gets a clear plain-English verdict up top and an experienced trader gets a full quant section below — same document, two altitudes, no content sacrificed.
 
 ## What it does (and doesn't)
 
 It executes the *quantitative* half of a rigorous research methodology from live data:
 
-- **Price/technicals** — RSI, MACD, moving averages + slope, ATR, realized volatility.
-- **Expected-move bands** — vol-scaled `spot × vol × √(t/252)` at ±1σ and ±1.65σ (90%), for today / week / month.
-- **Regime gate + signal stack** — rule-based regime classification and a trend/momentum/positioning/flow stack scored −1/0/+1 × weight → Bull/Base/Bear probabilities.
-- **Monte-Carlo** — a seeded (reproducible) OU + jump simulation → percentile fan chart + a 6-hour interval ladder.
+- **Price/technicals** — Wilder-smoothed RSI, MACD, 20/50/200-day moving averages + slope, ATR, 20-day realized volatility.
+- **Implied vs realized vol** — GVZ (gold), OVX (crude oil), VXSLV (silver) from Yahoo; report shows IV-vs-realized (event premium vs complacency).
+- **Expected-move bands** — vol-scaled `spot × vol × √(t/252)` at ±1σ and ±1.65σ (90%), for day / week / month. Vol source (implied or realized) is honored per plan.
+- **Term structure & roll** — front + next 3 futures deliveries, contango/backwardation shape, annualized roll yield, front-next spread.
+- **Regime gate + signal stack** — rule-based regime classification and a trend / momentum / positioning / flow / real-yield / DXY / term-structure stack, softmax-mapped to Bull / Base / Bear probabilities.
+- **Real-yield correlation** — rolling correlation of daily returns vs Δ 10y real yield (FRED); real-yield signal fires only when the inverse is intact.
 - **Positioning** — CFTC COT managed-money net + 3-year percentile (keyless).
-- **Macro overlay** (optional) — FRED real yield / dollar index for precious metals.
+- **Macro overlay** — 10y real yield (DGS10 − T10YIE via FRED, optional), tradeable DXY (DX-Y.NYB via Yahoo, keyless).
+- **ETF flow proxy** — class-relevant ETF (GLD/SLV/USO/UNG/etc.) 5-day and 20-day % change.
+- **Scheduled catalyst calendar** — deterministic dates for CFTC COT, EIA (petroleum & natural gas), USDA WASDE, Crop Progress, FOMC, US CPI — applied to the Monte-Carlo as event-day vol multipliers.
+- **Monte-Carlo** — a seeded (reproducible) OU + jump simulation → percentile fan chart, 6-hour interval ladder, catalyst-aware event days.
+- **Options-implied targets** — risk-neutral density from Yahoo option chain (Breeden-Litzenberger) for tickers with a listed chain — p5 / p25 / p50 / p75 / p95 alongside the Monte-Carlo.
+- **Backtest** — the same band construction on 60 rolling historical anchors, scored against realized closes — reports actual hit rates vs the ±1σ and 90% bands.
+- **Invalidation levels** — per-horizon upside / downside breakout levels that would void the read.
+- **Confidence rating** — 0–10 score with drivers, computed from source health, staleness, backtest availability, and red-flag count.
 
 It does **not** do the free-form, judgement parts of the source methodology — live news synthesis, weather characterization, chatter hygiene. Those require an LLM and are out of scope by design. Where a plan declares such a protocol, the report lists it under *"Qualitative protocols (NOT executed)"* and RED-FLAGs missing inputs rather than faking them. Every report is a mechanical, backward-looking model — scenario analysis, **not investment advice**.
 

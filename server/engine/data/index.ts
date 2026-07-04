@@ -6,7 +6,7 @@ import type { CommodityMeta, Quote } from "../../../shared/types.ts";
 
 export type { Bar } from "./yahoo.ts";
 export { cotDisaggregated } from "./cot.ts";
-export { fredSeries, fredRealYield } from "./fred.ts";
+export { fredSeries, fredRealYield, fredHistory, fredRealYieldHistory } from "./fred.ts";
 
 export interface OHLCResult {
   bars: Bar[];

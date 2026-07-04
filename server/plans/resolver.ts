@@ -127,3 +127,30 @@ export function validateRawPlan(obj: any): { ok: boolean; errors?: string[] } {
   }
   return { ok: true };
 }
+
+// Validate every registry CFTC code returns rows from the disaggregated dataset.
+// Runs once at startup; a failure logs a warning but does not block boot.
+export async function validateRegistryOnStartup(): Promise<void> {
+  const codes = loadRegistry()
+    .map((c) => c.cotContractCode)
+    .filter((c): c is string => !!c);
+  const uniq = [...new Set(codes)];
+  if (uniq.length === 0) return;
+  const url =
+    "https://publicreporting.cftc.gov/resource/72hh-3qpy.json" +
+    `?$select=cftc_contract_market_code&$where=cftc_contract_market_code in(${uniq.map((c) => `'${c}'`).join(",")})&$group=cftc_contract_market_code&$limit=1000`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`CFTC HTTP ${res.status}`);
+    const rows: { cftc_contract_market_code: string }[] = await res.json();
+    const found = new Set(rows.map((r) => r.cftc_contract_market_code));
+    const missing = uniq.filter((c) => !found.has(c));
+    if (missing.length) {
+      console.warn(`[registry-validate] ${missing.length} CFTC code(s) return no rows:`, missing.join(", "));
+    } else {
+      console.log(`[registry-validate] all ${uniq.length} CFTC codes verified`);
+    }
+  } catch (e: any) {
+    console.warn(`[registry-validate] check skipped: ${e?.message ?? e}`);
+  }
+}

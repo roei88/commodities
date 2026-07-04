@@ -3,9 +3,13 @@ import type { PlanAsset, Technicals, RegimeRead, SignalScore } from "../../share
 import { atrPctRank } from "./technicals.ts";
 
 export interface RegimeContext {
-  cotPercentile?: number | null; // managed-money net percentile (0..1)
-  realYieldCorrelation?: number | null; // rolling corr of returns vs real yield
-  gldTrend?: number | null; // flow proxy: sign of recent close change
+  cotPercentile?: number | null;      // managed-money net percentile (0..1)
+  realYieldCorrelation?: number | null; // rolling corr of returns vs real-yield
+  realYieldDirection?: number | null;   // recent real-yield change (%pts, signed)
+  dxyChangePct?: number | null;         // recent DXY move (%, signed)
+  etfFlow5dPct?: number | null;         // 5d % change in the flow-proxy ETF
+  rollShape?: "backwardation" | "contango" | "flat" | null;
+  gldTrend?: number | null;             // legacy alias, kept for compat
 }
 
 // Evaluate the declared regimeRules against computed features. Rules use a tiny
@@ -99,37 +103,75 @@ export function computeRegime(
     });
   }
   if (stack.flow) {
+    // Prefer real ETF flow when available; fall back to 5d ROC of price.
     let s: -1 | 0 | 1 = 0;
-    if (ctx.gldTrend != null) s = ctx.gldTrend > 0 ? 1 : ctx.gldTrend < 0 ? -1 : 0;
-    else {
-      // fallback flow proxy: 5-day price rate of change sign
+    let note: string;
+    if (ctx.etfFlow5dPct != null) {
+      s = ctx.etfFlow5dPct > 0.5 ? 1 : ctx.etfFlow5dPct < -0.5 ? -1 : 0;
+      note = `ETF 5d ${ctx.etfFlow5dPct > 0 ? "+" : ""}${ctx.etfFlow5dPct.toFixed(1)}%`;
+    } else if (ctx.gldTrend != null) {
+      s = ctx.gldTrend > 0 ? 1 : ctx.gldTrend < 0 ? -1 : 0;
+      note = "ETF flow (legacy)";
+    } else {
       const roc = bars.length > 5 ? price - bars[bars.length - 6].close : 0;
       s = roc > 0 ? 1 : roc < 0 ? -1 : 0;
+      note = "5d price ROC (fallback — no ETF flow)";
     }
-    signals.push({ name: "flow", score: s, weight: stack.flow.weight, note: "flow / 5d ROC proxy" });
+    signals.push({ name: "flow", score: s, weight: stack.flow.weight, note });
   }
   if (stack.realYield) {
+    // Only score real-yield if the correlation is meaningful; else neutral+note.
     let s: -1 | 0 | 1 = 0;
-    if (ctx.realYieldCorrelation != null && ctx.realYieldCorrelation < -0.2) {
-      // inverse intact: rising real yields would be a headwind; we score the
-      // recent real-yield direction is unknown here, so keep neutral unless corr strong
-      s = 0;
+    let note = "real-yield correlation unavailable";
+    const corr = ctx.realYieldCorrelation;
+    const dir = ctx.realYieldDirection;
+    if (corr != null && dir != null && Math.abs(corr) > 0.2) {
+      // Inverse regime: rising real yields => headwind for gold (score -1).
+      // Corr>0 (regime broken) reverses the sign.
+      const yieldsRising = dir > 0;
+      const inverseIntact = corr < 0;
+      s = inverseIntact ? (yieldsRising ? -1 : 1) : (yieldsRising ? 1 : -1);
+      note = `corr ${corr.toFixed(2)} (${inverseIntact ? "inverse intact" : "REGIME BROKEN"}), Δ real-yield ${dir > 0 ? "+" : ""}${dir.toFixed(2)}%pt`;
+    } else if (corr != null) {
+      note = `corr ${corr.toFixed(2)} (weak — no signal)`;
     }
+    signals.push({ name: "realYield", score: s, weight: stack.realYield.weight, note });
+  }
+  // Optional DXY factor (added dynamically when present in stack; treated inverse to commodities).
+  if (stack.dxy) {
+    let s: -1 | 0 | 1 = 0;
+    if (ctx.dxyChangePct != null) s = ctx.dxyChangePct > 0.5 ? -1 : ctx.dxyChangePct < -0.5 ? 1 : 0;
     signals.push({
-      name: "realYield",
+      name: "dxy",
       score: s,
-      weight: stack.realYield.weight,
-      note: ctx.realYieldCorrelation != null ? `gold/real-yield corr ${ctx.realYieldCorrelation.toFixed(2)}` : "real-yield data unavailable",
+      weight: stack.dxy.weight,
+      note: ctx.dxyChangePct != null ? `DXY 20d ${ctx.dxyChangePct > 0 ? "+" : ""}${ctx.dxyChangePct.toFixed(1)}%` : "DXY unavailable",
+    });
+  }
+  // Optional term-structure factor (backwardation = bullish tightness).
+  if (stack.termStructure) {
+    let s: -1 | 0 | 1 = 0;
+    if (ctx.rollShape === "backwardation") s = 1;
+    else if (ctx.rollShape === "contango") s = -1;
+    signals.push({
+      name: "termStructure",
+      score: s,
+      weight: stack.termStructure.weight,
+      note: ctx.rollShape ? `curve: ${ctx.rollShape}` : "curve unavailable",
     });
   }
 
-  const net = signals.reduce((a, s) => a + s.score * s.weight, 0); // ~ -1..+1
-  // Map net score to Bull/Base/Bear probabilities (softmax-ish, bounded).
-  const bull = clamp01(0.34 + net * 0.4);
-  const bear = clamp01(0.34 - net * 0.4);
-  const base = clamp01(1 - bull - bear);
-  const total = bull + base + bear;
-  const probabilities = { bull: bull / total, base: base / total, bear: bear / total };
+  const totalW = signals.reduce((s, x) => s + x.weight, 0) || 1;
+  const net = signals.reduce((a, s) => a + s.score * s.weight, 0) / totalW; // ~ -1..+1
+  // Softmax over (bull, base, bear) with logits (+net*T, 0, -net*T). Temperature T controls
+  // how sharply an extreme net collapses onto one scenario. T=2 keeps Base as the modal
+  // outcome for |net|<0.35, matching how the transcripts talk about "range holds".
+  const T = 2;
+  const logits = [net * T, 0, -net * T];
+  const maxL = Math.max(...logits);
+  const exps = logits.map((l) => Math.exp(l - maxL));
+  const sumExp = exps[0] + exps[1] + exps[2];
+  const probabilities = { bull: exps[0] / sumExp, base: exps[1] / sumExp, bear: exps[2] / sumExp };
 
   // Honesty rule from the transcripts: no lean below catalyst granularity. We only
   // emit a directional lean when the net signal is meaningful.

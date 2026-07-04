@@ -44,3 +44,42 @@ export async function fredRealYield(): Promise<{ value: number; asOf: string } |
     return null;
   }
 }
+
+export interface FredHistoryPoint { date: string; value: number }
+
+// Fetch a full daily history for one FRED series (used for rolling correlation).
+export async function fredHistory(seriesId: string, days = 400): Promise<FredHistoryPoint[]> {
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) throw new Error("fred: no API key");
+  const key = `fred-hist:${seriesId}:${days}`;
+  const TTL = 12 * 60 * 60 * 1000;
+  const { value } = await cached<FredHistoryPoint[]>(key, TTL, async () => {
+    const start = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+    const url =
+      `https://api.stlouisfed.org/fred/series/observations` +
+      `?series_id=${seriesId}&api_key=${apiKey}&file_type=json&observation_start=${start}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`fred HTTP ${res.status}`);
+    const json: any = await res.json();
+    const obs: any[] = (json.observations ?? []).filter((o: any) => o.value !== ".");
+    if (obs.length === 0) throw new Error(`fred: no observations for ${seriesId}`);
+    return obs.map((o: any) => ({ date: o.date, value: parseFloat(o.value) }));
+  });
+  return value;
+}
+
+// Real-yield history = DGS10 - T10YIE aligned by date. Returns [] on failure.
+export async function fredRealYieldHistory(days = 400): Promise<FredHistoryPoint[]> {
+  try {
+    const [nom, be] = await Promise.all([fredHistory("DGS10", days), fredHistory("T10YIE", days)]);
+    const byDate = new Map(be.map((p) => [p.date, p.value]));
+    const out: FredHistoryPoint[] = [];
+    for (const p of nom) {
+      const b = byDate.get(p.date);
+      if (b != null) out.push({ date: p.date, value: p.value - b });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}

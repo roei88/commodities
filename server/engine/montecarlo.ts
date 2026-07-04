@@ -9,6 +9,7 @@ interface MCInput {
   monthMoveFrac: number; // ~1 sigma monthly move as a fraction (for scenario anchors)
   seed: string;
   eventDayMultipliers: Record<number, number>; // dayIndex -> vol multiplier
+  appliedCatalysts?: { label: string; date: string; dayIndex: number; volMultiplier: number }[];
 }
 
 function gaussian(rng: seedrandom.PRNG): number {
@@ -76,7 +77,9 @@ export function runMonteCarlo(plan: PlanAsset, input: MCInput): MonteCarloResult
       const mult = input.eventDayMultipliers[t] ?? 1;
       const sig = baseSig * mult;
       let r = kappa * (la - Math.log(S)) + sig * gaussian(rng);
-      if (hazard > 0 && rng() < hazard) r += jMean + jSd * gaussian(rng);
+      // On event days, elevate jump hazard too (regime awareness).
+      const dayHazard = hazard * (mult > 1 ? mult : 1);
+      if (dayHazard > 0 && rng() < dayHazard) r += jMean + jSd * gaussian(rng);
       S = S * Math.exp(r);
       dayValues[t][i] = S;
       if (S > maxTouch[i]) maxTouch[i] = S;
@@ -131,5 +134,12 @@ export function runMonteCarlo(plan: PlanAsset, input: MCInput): MonteCarloResult
     return { level: roundP(level), probDown: Number((hits / N).toFixed(3)) };
   });
 
-  return { spot: input.spot, seed: input.seed, fan, ladder, touchProbs };
+  return {
+    spot: input.spot,
+    seed: input.seed,
+    fan,
+    ladder,
+    touchProbs,
+    appliedCatalysts: input.appliedCatalysts ?? [],
+  };
 }

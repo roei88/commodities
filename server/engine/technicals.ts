@@ -15,17 +15,27 @@ function ema(values: number[], period: number): number[] {
   return out;
 }
 
+// Wilder-smoothed RSI (RMA), the industry-standard variant.
 function rsi(closes: number[], period: number): number | null {
   if (closes.length < period + 1) return null;
   let gains = 0;
   let losses = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
+  // Seed avg with simple mean over first `period` diffs.
+  for (let i = 1; i <= period; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff >= 0) gains += diff;
     else losses -= diff;
   }
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  // Wilder smoothing for the remaining diffs: RMA_t = (prev*(p-1) + cur) / p
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    const g = diff > 0 ? diff : 0;
+    const l = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + g) / period;
+    avgLoss = (avgLoss * (period - 1) + l) / period;
+  }
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
@@ -64,6 +74,50 @@ export function realizedVol(closes: number[], window: number): number | null {
   const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
   const varr = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1);
   return Math.sqrt(varr) * Math.sqrt(252) * 100;
+}
+
+// Pearson correlation between two aligned series of daily log returns.
+// Returns null if aligned length < 20.
+export function correlationOfReturns(seriesA: number[], seriesB: number[]): number | null {
+  const n = Math.min(seriesA.length, seriesB.length);
+  if (n < 21) return null;
+  const a: number[] = [];
+  const b: number[] = [];
+  for (let i = 1; i < n; i++) {
+    a.push(Math.log(seriesA[i] / seriesA[i - 1]));
+    b.push(Math.log(seriesB[i] / seriesB[i - 1]));
+  }
+  const meanA = a.reduce((s, v) => s + v, 0) / a.length;
+  const meanB = b.reduce((s, v) => s + v, 0) / b.length;
+  let num = 0, denA = 0, denB = 0;
+  for (let i = 0; i < a.length; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    num += da * db;
+    denA += da * da;
+    denB += db * db;
+  }
+  const den = Math.sqrt(denA * denB);
+  if (den === 0) return null;
+  return num / den;
+}
+
+// Align two dated series by date, keeping only common dates. Returns close arrays.
+export function alignByDate(
+  a: { date: string; value: number }[],
+  b: { date: string; value: number }[]
+): { aVals: number[]; bVals: number[] } {
+  const bByDate = new Map(b.map((x) => [x.date.slice(0, 10), x.value]));
+  const aVals: number[] = [];
+  const bVals: number[] = [];
+  for (const p of a) {
+    const k = p.date.slice(0, 10);
+    if (bByDate.has(k)) {
+      aVals.push(p.value);
+      bVals.push(bByDate.get(k)!);
+    }
+  }
+  return { aVals, bVals };
 }
 
 // Percentile rank of the latest ATR% within its own history (regime signal).

@@ -5,11 +5,14 @@ services:
     name: commodity-research
     runtime: node
     plan: starter
-    buildCommand: npm install && npm run build
+    # NOTE: do NOT set NODE_ENV=production as an env var here - it would make
+    # `npm install` omit devDependencies (vite/tsx/react are devDeps at build time).
+    # `npm run start` sets NODE_ENV=production via cross-env, which is all vite-express needs.
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: FRED_API_KEY
         sync: false
       - key: TWELVEDATA_API_KEY

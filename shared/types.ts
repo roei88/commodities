@@ -18,6 +18,9 @@ export interface CommodityMeta {
   unit: string; // "USD/oz", "USD/bbl", "USD/tonne", "USd/lb"...
   venue: string; // "COMEX", "NYMEX", "ICE US", "CBOT"...
   cotContractCode?: string; // CFTC market code (disaggregated report)
+  cotVenueNote?: string; // e.g. "NYMEX proxy for ICE Brent"
+  dataUnavailable?: boolean; // set when no live source exists
+  dataUnavailableReason?: string;
   // Seed reference quote from the user's snapshot (last known; "market closed").
   seed?: { sell: number; buy: number; changePct: number };
 }
@@ -128,6 +131,38 @@ export interface MonteCarloResult {
   fan: FanPoint[];
   ladder: LadderRow[];
   touchProbs: { level: number; probUp?: number; probDown?: number }[];
+  appliedCatalysts: { label: string; date: string; dayIndex: number; volMultiplier: number }[];
+}
+
+export interface OptionsImpliedTargets {
+  underlying: string;
+  expiry: string;
+  daysToExpiry: number;
+  spot: number;
+  p5: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p95: number;
+  source: string;
+}
+
+export interface TermStructureRead {
+  root: string;
+  contracts: { symbol: string; monthCode: string; price: number; expiry: string | null }[];
+  shape: "backwardation" | "contango" | "flat" | "insufficient";
+  rollYieldAnnualizedPct: number | null;
+  spread: number | null;
+  note: string;
+}
+
+export interface BacktestResult {
+  horizon: string;
+  n: number;
+  hitRate1Sigma: number; // fraction of anchor dates where realized close fell inside 1σ band
+  hitRate90: number;    // ditto for 90% band
+  brier: number | null; // Brier score of directional lean vs realized sign
+  medianError: number;  // median |predicted median - realized|
 }
 
 export interface RedFlag {
@@ -144,9 +179,26 @@ export interface RunResult {
   quote: Quote | null;
   technicals: Technicals | null;
   bands: Bands[];
+  volSource: "implied" | "realized" | "unavailable";
+  volUsedPct: number | null;
+  impliedVolPct: number | null;
+  realizedVolPct: number | null;
   regime: RegimeRead | null;
-  cot: { asOf: string; managedMoneyNet: number; percentile3y: number | null; source: string } | null;
+  cot: { asOf: string; managedMoneyNet: number; percentile3y: number | null; source: string; venueNote?: string } | null;
+  macro: {
+    realYield?: { value: number; asOf: string } | null;
+    realYieldCorrelation?: number | null;
+    dxy?: { value: number; asOf: string; changePct1d?: number | null; changePct20d?: number | null; source: string } | null;
+  } | null;
+  termStructure: TermStructureRead | null;
+  etfFlow: { ticker: string; changePct5d: number | null; changePct20d: number | null; source: string } | null;
   montecarlo: MonteCarloResult | null;
+  optionsImplied: OptionsImpliedTargets | null;
+  backtest: BacktestResult[] | null;
+  catalystsInSpan: { label: string; date: string; volMultiplier: number; source: string }[];
+  invalidations: { horizon: string; upsideBreak: number; downsideBreak: number }[];
+  confidence: { score: number; label: "high" | "medium" | "low"; drivers: string[] };
+  tldr: string;
   redFlags: RedFlag[];
   markdown: string;
   finishedAt: string;

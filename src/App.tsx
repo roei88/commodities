@@ -18,13 +18,16 @@ export default function App() {
   const [result, setResult] = useState<RunResult | null>(null);
   const [tab, setTab] = useState<"activity" | "report">("activity");
   const closeRef = useRef<(() => void) | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const runIdRef = useRef<string | null>(null);
+  const runCommodityRef = useRef<string | null>(null);
+  const logBoxRef = useRef<HTMLDivElement>(null);
+  const [commoditiesError, setCommoditiesError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/commodities")
       .then((r) => r.json())
       .then((d) => setCommodities(d.commodities ?? []))
-      .catch(() => setCommodities([]));
+      .catch((e) => { setCommodities([]); setCommoditiesError(String(e)); });
   }, []);
 
   // Default span: today -> +10 days, once a commodity is picked.
@@ -37,13 +40,37 @@ export default function App() {
     }
   }, [selected]);
 
+  // Sticky-bottom log scroll: auto-scroll only when the user is already at the
+  // bottom (or within 40px). Container-scoped so the page doesn't yank.
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = logBoxRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [log]);
+
+  // Cleanup: close any open SSE stream on unmount.
+  useEffect(() => () => { closeRef.current?.(); closeRef.current = null; }, []);
 
   const commodity = commodities.find((c) => c.id === selected);
   const spanValid = useMemo(() => !!from && !!to && new Date(to) > new Date(from), [from, to]);
-  const canRun = !!selected && spanValid && status !== "running";
+  const spanInPast = useMemo(() => !!to && new Date(to) <= new Date(), [to]);
+  const canRun = !!selected && spanValid && status !== "running" && !commodity?.dataUnavailable;
+
+  function onSelectCommodity(id: string) {
+    // Mid-run guard: abort any in-flight stream and clear state.
+    if (status === "running") {
+      closeRef.current?.();
+      closeRef.current = null;
+      runIdRef.current = null;
+      runCommodityRef.current = null;
+      setLog([]);
+    }
+    setSelected(id);
+    setStatus("idle");
+    setResult(null);
+    setLog([]);
+  }
 
   function run() {
     if (!canRun) return;
@@ -52,6 +79,8 @@ export default function App() {
     setResult(null);
     setTab("activity");
     closeRef.current?.();
+    const commodityAtStart = selected;
+    runCommodityRef.current = commodityAtStart;
 
     fetch("/api/run", {
       method: "POST",
@@ -65,10 +94,18 @@ export default function App() {
           setStatus("error");
           return;
         }
+        runIdRef.current = runId;
         closeRef.current = streamRun(
           runId,
-          (line) => setLog((l) => [...l, line]),
-          () => finish(runId)
+          (line) => {
+            // Ignore lines from an orphaned prior run.
+            if (runCommodityRef.current !== commodityAtStart) return;
+            setLog((l) => [...l, line]);
+          },
+          () => {
+            if (runCommodityRef.current !== commodityAtStart) return;
+            finish(runId);
+          }
         );
       })
       .catch((e) => {
@@ -79,17 +116,25 @@ export default function App() {
 
   function finish(runId: string) {
     fetch(`/api/report/${runId}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : { status: "error", error: `HTTP ${r.status}` })
       .then((d) => {
         if (d.status === "done") {
           setResult(d.result);
           setStatus("done");
           setTab("report");
         } else if (d.status === "error") {
+          setLog((l) => [...l, mkLine("error", d.error ?? "run failed")]);
+          setStatus("error");
+        } else {
+          // "running" status returned after 'complete' event -> server likely evicted the run
+          setLog((l) => [...l, mkLine("error", "Run finished but report is unavailable (server may have restarted).")]);
           setStatus("error");
         }
       })
-      .catch(() => setStatus("error"));
+      .catch((e) => {
+        setLog((l) => [...l, mkLine("error", `Report fetch failed: ${e?.message ?? e}`)]);
+        setStatus("error");
+      });
   }
 
   const reportHtml = useMemo(() => (result ? renderMarkdown(result.markdown) : ""), [result]);
@@ -118,21 +163,29 @@ export default function App() {
         <div className="controls">
           <div className="field">
             <label>Commodity</label>
-            <select value={selected} onChange={(e) => { setSelected(e.target.value); setStatus("idle"); }}>
+            <select value={selected} onChange={(e) => onSelectCommodity(e.target.value)}>
               <option value="">Select a commodity…</option>
               {commodities.map((c) => (
-                <option key={c.id} value={c.id}>{c.label} · {c.venue}</option>
+                <option key={c.id} value={c.id} disabled={(c as any).dataUnavailable}>
+                  {c.label} · {c.venue}{(c as any).dataUnavailable ? " (no live data)" : ""}
+                </option>
               ))}
             </select>
+            {commoditiesError && <div className="seed-quote" style={{ color: "var(--red)" }}>Failed to load commodities: {commoditiesError}</div>}
             {commodity && (
               <>
                 <div className="plan-chip">plan: {commodity.planResolution}</div>
+                {(commodity as any).dataUnavailable && (
+                  <div className="seed-quote" style={{ color: "var(--amber)" }}>
+                    ⚠ No live data source for this commodity: {(commodity as any).dataUnavailableReason}
+                  </div>
+                )}
                 {commodity.seed && (
                   <div className="seed-quote">
                     last known {commodity.seed.sell} / {commodity.seed.buy}{" "}
                     <span className={commodity.seed.changePct >= 0 ? "up" : "down"}>
                       {commodity.seed.changePct >= 0 ? "+" : ""}{commodity.seed.changePct}%
-                    </span>{" "}· market closed (live price fetched on run)
+                    </span>{" "}· snapshot (live price fetched on run)
                   </div>
                 )}
               </>
@@ -150,6 +203,11 @@ export default function App() {
               </div>
             </div>
             {selected && !spanValid && <div className="seed-quote">Pick an end date after the start date.</div>}
+            {selected && spanValid && spanInPast && (
+              <div className="seed-quote" style={{ color: "var(--amber)" }}>
+                ⚠ Span end is in the past — projection horizon defaults to ~5 trading days.
+              </div>
+            )}
           </div>
 
           <button className="run-btn" disabled={!canRun} onClick={run}>
@@ -172,15 +230,14 @@ export default function App() {
         </div>
 
         {tab === "activity" && (
-          <div className="logbox">
+          <div className="logbox" ref={logBoxRef}>
             {log.length === 0 && <div className="empty">Select a commodity and span, then Run research. Activity streams here live.</div>}
             {log.map((l, i) => (
               <div key={i} className={`logline lv-${l.level}`}>
-                <span className="t">{l.ts.slice(11, 19)}</span>
+                <span className="t">{new Date(l.ts).toLocaleTimeString("en-GB", { hour12: false })}</span>
                 <span className="m">{l.msg}</span>
               </div>
             ))}
-            <div ref={logEndRef} />
           </div>
         )}
 
