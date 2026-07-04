@@ -1,0 +1,42 @@
+{
+  "id": "cocoa",
+  "extends": "softs",
+  "label": "Cocoa (ICE US CC) - regime-first, minute-fresh, thin-market aware",
+  "dataInputs": {
+    "primarySymbol": "CC=F",
+    "fallbackSymbols": ["cc.f", "COCOA"],
+    "cotContractCode": "073732",
+    "minHistoryDays": 400
+  },
+  "signalStack": {
+    "trend": { "weight": 0.3 },
+    "momentum": { "weight": 0.2 },
+    "positioning": { "weight": 0.3 },
+    "flow": { "weight": 0.2 }
+  },
+  "regimeRules": [
+    { "if": "atrPctRank>0.8", "regime": "high-volatility (thin OI - widen bands)" },
+    { "if": "price>ma20 && price>ma50 && price>ma200", "regime": "above full MA stack" },
+    { "if": "price<ma50", "regime": "supply-math regime reasserting" }
+  ],
+  "monteCarlo": {
+    "paths": 30000,
+    "ouMeanReversionHalflifeDays": 7,
+    "jumpDailyHazardPct": 3.5,
+    "jumpMeanPct": 0.0,
+    "jumpSdPct": 2.5,
+    "ladderIntervalHours": 6
+  },
+  "accuracyCeilings": {
+    "weather": "West African weather is the flagship minute-fresh driver and cannot be judged deterministically - moderate rain is bearish, excessive rain and drought are BOTH bullish. Declared, not executed.",
+    "arrivals": "Ivory Coast arrivals series conflict (CCC official vs exporter, ~100k+ tonnes) and base-year revisions distort y/y - requires named-series verification the engine cannot do.",
+    "thinMarket": "Cocoa OI is a fraction of pre-2024 levels; single orders and ICE margin changes move price independent of fundamentals. Bands are wide by construction.",
+    "shortHorizon": "No lean below catalyst granularity (Monday arrivals / Friday COT / grind print / verified weather)."
+  },
+  "qualitativeProtocols": [
+    "WEATHER PROTOCOL: pull actual meteorology (Reuters Abidjan survey, NOAA ENSO), classify rain by intensity-vs-need, time-split current-crop vs next-crop. (Out of deterministic scope - declared, RED-FLAGGED.)",
+    "POLICY/INTERVENTION WATCH: CCC/Cocobod farmgate resets, floor-defense buying, withholding. (Declared.)",
+    "NARRATIVE-WHIPSAW detector: daily wraps flip sign day to day - treat as descriptions, never signals.",
+    "SYMBOL/VENUE guard: cocoa quotes collide across feeds (ICE US CC vs London C vs CFD) - every price needs exchange + contract + timestamp."
+  ]
+}

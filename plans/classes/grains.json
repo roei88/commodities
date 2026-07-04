@@ -1,0 +1,23 @@
+{
+  "id": "grains",
+  "extends": "universal",
+  "label": "Grains class plan",
+  "signalStack": {
+    "trend": { "weight": 0.3 },
+    "momentum": { "weight": 0.25 },
+    "positioning": { "weight": 0.25 },
+    "flow": { "weight": 0.2 }
+  },
+  "catalystCalendar": [
+    { "label": "USDA WASDE (monthly)", "recurrence": "wasde", "volMultiplier": 1.5 }
+  ],
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 9,
+    "jumpDailyHazardPct": 2.5,
+    "jumpSdPct": 1.8
+  },
+  "qualitativeProtocols": [
+    "Grains are weather- and USDA-report-driven (WASDE, Crop Progress, acreage); the engine cannot ingest weather or report surprises.",
+    "Seasonality (planting/harvest) is a prior the deterministic model does not encode beyond price history."
+  ]
+}

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data-cache/*
+!data-cache/.gitkeep
+runs/
+.env
+.env.local
+*.log
+.DS_Store

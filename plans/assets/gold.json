@@ -1,0 +1,43 @@
+{
+  "id": "gold",
+  "extends": "precious-metals",
+  "label": "Gold (COMEX GC) - regime-first, backtest-hardened",
+  "dataInputs": {
+    "primarySymbol": "GC=F",
+    "fallbackSymbols": ["gc.f", "XAU/USD"],
+    "cotContractCode": "088691",
+    "macroSeries": ["DGS10", "T10YIE", "DTWEXBGS"],
+    "minHistoryDays": 500
+  },
+  "signalStack": {
+    "trend": { "weight": 0.25 },
+    "momentum": { "weight": 0.2 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.15 },
+    "realYield": { "weight": 0.2 }
+  },
+  "regimeRules": [
+    { "if": "price>ma200 && ma50Slope>0", "regime": "uptrend (structural bull intact)" },
+    { "if": "price<ma50 && ma50Slope<0", "regime": "tactical breakdown" },
+    { "if": "realYieldCorrelationIntact==false", "regime": "real-yield decoupled (central-bank/debasement regime)" }
+  ],
+  "monteCarlo": {
+    "paths": 30000,
+    "ouMeanReversionHalflifeDays": 12,
+    "jumpDailyHazardPct": 1.5,
+    "jumpMeanPct": 0.0,
+    "jumpSdPct": 1.2,
+    "ladderIntervalHours": 6
+  },
+  "accuracyCeilings": {
+    "regime": "Textbook safe-haven prior is unreliable (gold fell ~11% during an active Mideast war in June 2026 because oil->inflation->rates dominated). The regime gate overrides it.",
+    "shortHorizon": "No directional lean shorter than the next dominant catalyst (FOMC/CPI). Band + trigger only.",
+    "structural": "Central-bank bid and year-end bank targets floor quarters, not weeks - never cited as near-term support. A bank target CUT is a coincident bearish signal.",
+    "realYield": "The 10Y-TIPS inverse can be regime-broken; weight it only when rolling correlation confirms it is intact."
+  },
+  "qualitativeProtocols": [
+    "REGIME GATE: decide which channel drives gold now - oil->inflation->rates vs real-yield inverse vs USD/debasement. Escalation is not automatically gold-positive. (LLM/analyst judgement; the engine approximates via price/vol/COT/real-yield correlation only.)",
+    "Anchor FOMC/CPI reads to the primary release (Fed SEP, BLS/BEA), not secondary spin. (Out of deterministic scope - declared.)",
+    "Both-branch event framing for each scheduled catalyst (hawkish vs dovish -> price consequence)."
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PlanAsset",
+  "type": "object",
+  "required": ["id", "technicals", "bands", "signalStack", "monteCarlo"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string" },
+    "extends": { "type": "string" },
+    "label": { "type": "string" },
+    "dataInputs": {
+      "type": "object",
+      "properties": {
+        "primarySymbol": { "type": "string" },
+        "fallbackSymbols": { "type": "array", "items": { "type": "string" } },
+        "cotContractCode": { "type": "string" },
+        "macroSeries": { "type": "array", "items": { "type": "string" } },
+        "minHistoryDays": { "type": "number" }
+      }
+    },
+    "technicals": {
+      "type": "object",
+      "required": ["rsiPeriod", "atrPeriod", "realizedVolWindow", "maPeriods"],
+      "properties": {
+        "rsiPeriod": { "type": "number", "minimum": 2 },
+        "atrPeriod": { "type": "number", "minimum": 2 },
+        "realizedVolWindow": { "type": "number", "minimum": 2 },
+        "maPeriods": { "type": "array", "items": { "type": "number" }, "minItems": 1 }
+      }
+    },
+    "bands": {
+      "type": "object",
+      "required": ["volSource", "horizons", "sigmaLevels"],
+      "properties": {
+        "volSource": { "type": "string", "enum": ["realized", "implied"] },
+        "horizons": { "type": "object", "additionalProperties": { "type": "number" } },
+        "sigmaLevels": { "type": "array", "items": { "type": "number" }, "minItems": 1 }
+      }
+    },
+    "signalStack": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["weight"],
+        "properties": { "weight": { "type": "number", "minimum": 0, "maximum": 1 } }
+      }
+    },
+    "regimeRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["if", "regime"],
+        "properties": { "if": { "type": "string" }, "regime": { "type": "string" } }
+      }
+    },
+    "catalystCalendar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "volMultiplier"],
+        "properties": {
+          "label": { "type": "string" },
+          "date": { "type": "string" },
+          "recurrence": { "type": "string" },
+          "volMultiplier": { "type": "number" }
+        }
+      }
+    },
+    "monteCarlo": {
+      "type": "object",
+      "required": ["paths", "process", "ladderIntervalHours"],
+      "properties": {
+        "paths": { "type": "number", "minimum": 100, "maximum": 200000 },
+        "seedStrategy": { "type": "string" },
+        "process": { "type": "string" },
+        "ouMeanReversionHalflifeDays": { "type": "number", "minimum": 1 },
+        "jumpDailyHazardPct": { "type": "number", "minimum": 0 },
+        "jumpMeanPct": { "type": "number" },
+        "jumpSdPct": { "type": "number", "minimum": 0 },
+        "ladderIntervalHours": { "type": "number", "minimum": 1 }
+      }
+    },
+    "reportSections": { "type": "array", "items": { "type": "string" } },
+    "accuracyCeilings": { "type": "object", "additionalProperties": { "type": "string" } },
+    "qualitativeProtocols": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,16 @@
+# One-command deploy to Render (long-running web service; supports SSE + multi-minute runs).
+# Push this repo to GitHub, then: Render Dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: commodity-research
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRED_API_KEY
+        sync: false
+      - key: TWELVEDATA_API_KEY
+        sync: false

@@ -1,0 +1,61 @@
+{
+  "id": "universal",
+  "label": "Universal generic commodity plan",
+  "dataInputs": {
+    "minHistoryDays": 400
+  },
+  "technicals": {
+    "rsiPeriod": 14,
+    "atrPeriod": 14,
+    "realizedVolWindow": 20,
+    "maPeriods": [20, 50, 200]
+  },
+  "bands": {
+    "volSource": "realized",
+    "horizons": { "day": 1, "week": 5, "month": 21 },
+    "sigmaLevels": [1.0, 1.65]
+  },
+  "signalStack": {
+    "trend": { "weight": 0.35 },
+    "momentum": { "weight": 0.25 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.2 }
+  },
+  "regimeRules": [
+    { "if": "price>ma200 && ma50Slope>0", "regime": "uptrend" },
+    { "if": "price<ma200 && ma50Slope<0", "regime": "downtrend" },
+    { "if": "atrPctRank>0.8", "regime": "high-volatility" }
+  ],
+  "catalystCalendar": [],
+  "monteCarlo": {
+    "paths": 20000,
+    "seedStrategy": "symbol+date+planHash",
+    "process": "ou-jump",
+    "ouMeanReversionHalflifeDays": 10,
+    "jumpDailyHazardPct": 2.0,
+    "jumpMeanPct": 0.0,
+    "jumpSdPct": 1.5,
+    "ladderIntervalHours": 6
+  },
+  "reportSections": [
+    "header",
+    "regime",
+    "bands",
+    "signalStack",
+    "montecarlo",
+    "positioning",
+    "catalysts",
+    "invalidation",
+    "confidence",
+    "redFlags",
+    "sources",
+    "accuracyCeilings",
+    "disclaimer"
+  ],
+  "accuracyCeilings": {
+    "shortHorizon": "Sub-catalyst horizons are noise-dominated; band + trigger only, no directional point.",
+    "positioning": "COT is lagged up to 1 week (Tuesday data, Friday release).",
+    "model": "Mechanical, backward-looking model. No live news or narrative awareness."
+  },
+  "qualitativeProtocols": []
+}

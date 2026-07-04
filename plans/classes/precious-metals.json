@@ -1,0 +1,24 @@
+{
+  "id": "precious-metals",
+  "extends": "universal",
+  "label": "Precious metals class plan",
+  "dataInputs": {
+    "macroSeries": ["DGS10", "T10YIE", "DTWEXBGS"]
+  },
+  "signalStack": {
+    "trend": { "weight": 0.3 },
+    "momentum": { "weight": 0.2 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.15 },
+    "realYield": { "weight": 0.15 }
+  },
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 12,
+    "jumpDailyHazardPct": 1.5,
+    "jumpSdPct": 1.2
+  },
+  "qualitativeProtocols": [
+    "Real-yield inverse can be regime-broken (2022-2025 central-bank buying decoupled it); the deterministic engine tests rolling correlation but cannot judge the monetary regime narrative.",
+    "Central-bank buying is a structural bid not captured by price/COT alone."
+  ]
+}

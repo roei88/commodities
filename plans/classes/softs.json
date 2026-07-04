@@ -1,0 +1,21 @@
+{
+  "id": "softs",
+  "extends": "universal",
+  "label": "Softs class plan",
+  "signalStack": {
+    "trend": { "weight": 0.3 },
+    "momentum": { "weight": 0.25 },
+    "positioning": { "weight": 0.25 },
+    "flow": { "weight": 0.2 }
+  },
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 8,
+    "jumpDailyHazardPct": 3.0,
+    "jumpSdPct": 2.2
+  },
+  "qualitativeProtocols": [
+    "Softs (cocoa, coffee, sugar, cotton) are weather- and origin-policy-driven, and markets are thin - single orders and margin changes move price independent of fundamentals.",
+    "The engine cannot read weather nowcasts, arrivals data, grind reports, or origin-country policy; these are declared, not executed.",
+    "Thin open interest exaggerates moves - bands should be treated as wide."
+  ]
+}

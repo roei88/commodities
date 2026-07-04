@@ -1,0 +1,23 @@
+{
+  "id": "industrial-metals",
+  "extends": "universal",
+  "label": "Industrial metals class plan",
+  "dataInputs": {
+    "macroSeries": ["DTWEXBGS"]
+  },
+  "signalStack": {
+    "trend": { "weight": 0.35 },
+    "momentum": { "weight": 0.25 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.2 }
+  },
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 10,
+    "jumpDailyHazardPct": 2.0,
+    "jumpSdPct": 1.6
+  },
+  "qualitativeProtocols": [
+    "Industrial metals track global growth expectations (China PMI, construction, inventories at LME/SHFE); the engine cannot read those narratives.",
+    "Aluminum (ALI=F) history on the free feed can be thin - validate coverage and RED-FLAG gaps."
+  ]
+}

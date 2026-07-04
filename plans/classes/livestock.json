@@ -1,0 +1,20 @@
+{
+  "id": "livestock",
+  "extends": "universal",
+  "label": "Livestock class plan",
+  "signalStack": {
+    "trend": { "weight": 0.35 },
+    "momentum": { "weight": 0.25 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.2 }
+  },
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 10,
+    "jumpDailyHazardPct": 2.0,
+    "jumpSdPct": 1.6
+  },
+  "qualitativeProtocols": [
+    "Livestock is driven by USDA Cattle on Feed / Cold Storage reports, feed costs, and disease events; the engine cannot ingest these.",
+    "Contracts have daily price limits that truncate the true distribution - the Gaussian/OU model does not enforce limit-lock behavior."
+  ]
+}

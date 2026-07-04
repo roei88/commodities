@@ -1,0 +1,23 @@
+{
+  "id": "energy",
+  "extends": "universal",
+  "label": "Energy class plan",
+  "dataInputs": {
+    "macroSeries": ["DTWEXBGS"]
+  },
+  "signalStack": {
+    "trend": { "weight": 0.35 },
+    "momentum": { "weight": 0.3 },
+    "positioning": { "weight": 0.2 },
+    "flow": { "weight": 0.15 }
+  },
+  "monteCarlo": {
+    "ouMeanReversionHalflifeDays": 8,
+    "jumpDailyHazardPct": 3.0,
+    "jumpSdPct": 2.0
+  },
+  "qualitativeProtocols": [
+    "Energy prices are geopolitically reflexive (supply shocks, OPEC decisions, inventory reports); the engine has no live news awareness of these.",
+    "Weekly EIA inventory prints and OPEC meetings are scheduled catalysts that should be added to catalystCalendar when known."
+  ]
+}
