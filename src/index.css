@@ -657,3 +657,95 @@ body {
 }
 .report-toolbar .btn-sm:hover { border-color: var(--accent); }
 
+/* ============================================================
+   Commodity illustration frames — the actual "bright shiny gold bar"
+   ============================================================ */
+.commodity-art { display: inline-flex; }
+.commodity-art svg { display: block; width: 100%; height: auto; }
+
+/* Controls layout with the illustration alongside */
+.controls-wrap {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+@media (max-width: 900px) { .controls-wrap { grid-template-columns: 1fr; } }
+.controls-wrap .controls { min-width: 0; }
+
+/* The art frame: big centerpiece next to the controls when a commodity is picked */
+.art-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 22px;
+  border-radius: 14px;
+  background:
+    radial-gradient(500px 260px at 50% 20%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 65%),
+    radial-gradient(400px 260px at 50% 100%, color-mix(in srgb, var(--accent2) 15%, transparent), transparent 60%),
+    var(--hero-fill, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 40%, var(--accent) 40%);
+  box-shadow:
+    0 30px 60px -30px color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 15%, transparent);
+  overflow: hidden;
+}
+.art-frame::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(300px 100px at 50% 90%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.art-hero {
+  width: 100%;
+  max-width: 280px;
+  filter:
+    drop-shadow(0 20px 30px color-mix(in srgb, var(--accent) 35%, transparent))
+    drop-shadow(0 8px 12px color-mix(in srgb, var(--accent2) 25%, transparent));
+  transition: transform 300ms ease, filter 300ms ease;
+}
+.art-frame:hover .art-hero {
+  transform: translateY(-2px) scale(1.02);
+  filter:
+    drop-shadow(0 24px 36px color-mix(in srgb, var(--accent) 50%, transparent))
+    drop-shadow(0 10px 16px color-mix(in srgb, var(--accent2) 35%, transparent));
+}
+.art-caption {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--accent) 15%);
+  border: 1px solid color-mix(in srgb, var(--border) 40%, var(--accent) 30%);
+}
+.art-caption .glyph {
+  color: var(--accent);
+  font-size: 14px;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Small badge illustration inside the report toolbar */
+.art-badge {
+  width: 72px;
+  height: 52px;
+  flex-shrink: 0;
+  filter:
+    drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 40%, transparent));
+}
+.art-badge svg { width: 100%; height: 100%; }
+
+/* A gentle idle shimmer on the metallic families (opt-in via .art-shimmer) */
+@keyframes art-shimmer {
+  0%   { filter: drop-shadow(0 20px 30px color-mix(in srgb, var(--accent) 30%, transparent)) drop-shadow(0 8px 12px color-mix(in srgb, var(--accent2) 20%, transparent)); }
+  50%  { filter: drop-shadow(0 22px 36px color-mix(in srgb, var(--accent) 48%, transparent)) drop-shadow(0 10px 16px color-mix(in srgb, var(--accent2) 32%, transparent)); }
+  100% { filter: drop-shadow(0 20px 30px color-mix(in srgb, var(--accent) 30%, transparent)) drop-shadow(0 8px 12px color-mix(in srgb, var(--accent2) 20%, transparent)); }
+}
+.art-hero { animation: art-shimmer 6s ease-in-out infinite; }
+

@@ -6,6 +6,7 @@ import { applyTheme, themeFor } from "./lib/theme.ts";
 import FanChart from "./components/FanChart.tsx";
 import IntervalLadder from "./components/IntervalLadder.tsx";
 import ReportView from "./components/ReportView.tsx";
+import CommodityArt from "./components/CommodityArt.tsx";
 
 type CommodityWithPlan = CommodityMeta & { planResolution: string };
 type Status = "idle" | "running" | "done" | "error";
@@ -173,7 +174,17 @@ export default function App() {
       </div>
 
       <div className="container">
-        {/* Controls */}
+        {/* Controls + illustration alongside */}
+        <div className="controls-wrap">
+          {commodity && (
+            <div className="art-frame">
+              <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
+              <div className="art-caption">
+                <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
+                <span>{themeFor(commodity.id).name}</span>
+              </div>
+            </div>
+          )}
         <div className="controls">
           <div className="field">
             <label>Commodity</label>
@@ -228,6 +239,7 @@ export default function App() {
             {status === "running" ? "Running…" : "Run research"}
           </button>
         </div>
+        </div>
 
         {/* Tabs */}
         <div className="tabs">
@@ -259,6 +271,7 @@ export default function App() {
           <div className="report-grid v2">
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div className="report-toolbar">
+                <CommodityArt id={result.commodity.id} className="art-badge" ariaLabel={themeFor(result.commodity.id).name} />
                 <span className="commodity-badge">
                   <span className="glyph">{themeFor(result.commodity.id).glyph}</span>
                   <strong>{result.commodity.label}</strong>
