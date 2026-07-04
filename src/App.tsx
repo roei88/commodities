@@ -7,6 +7,7 @@ import FanChart from "./components/FanChart.tsx";
 import IntervalLadder from "./components/IntervalLadder.tsx";
 import ReportView from "./components/ReportView.tsx";
 import CommodityArt from "./components/CommodityArt.tsx";
+import AssetChart from "./components/AssetChart.tsx";
 
 type CommodityWithPlan = CommodityMeta & { planResolution: string };
 type Status = "idle" | "running" | "done" | "error";
@@ -178,10 +179,19 @@ export default function App() {
         <div className="controls-wrap">
           {commodity && (
             <div className="art-frame">
-              <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
-              <div className="art-caption">
-                <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
-                <span>{themeFor(commodity.id).name}</span>
+              <div className="art-backdrop" aria-hidden>
+                <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
+              </div>
+              <div className="art-foreground">
+                {!(commodity as any).dataUnavailable ? (
+                  <AssetChart commodityId={commodity.id} unit={commodity.unit} />
+                ) : (
+                  <div className="asset-chart-msg">Live chart unavailable for this commodity.</div>
+                )}
+                <div className="art-caption">
+                  <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
+                  <span>{themeFor(commodity.id).name}</span>
+                </div>
               </div>
             </div>
           )}

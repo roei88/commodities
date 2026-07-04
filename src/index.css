@@ -663,29 +663,21 @@ body {
 .commodity-art { display: inline-flex; }
 .commodity-art svg { display: block; width: 100%; height: auto; }
 
-/* Controls layout with the illustration alongside */
-.controls-wrap {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: 20px;
-  align-items: stretch;
-}
-@media (max-width: 900px) { .controls-wrap { grid-template-columns: 1fr; } }
+/* Controls-wrap becomes a single-column stack now that the art-frame
+   is a wide layered composition (illustration + chart) that spans full width. */
+.controls-wrap { display: flex; flex-direction: column; gap: 20px; }
 .controls-wrap .controls { min-width: 0; }
 
-/* The art frame: big centerpiece next to the controls when a commodity is picked */
+/* Art frame: layered wide card. Illustration is watermarked in the background,
+   the interactive AssetChart is the foreground/focus. Together they read as
+   the "asset panel" - one glance shows what the commodity is + how it's trading. */
 .art-frame {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px 22px;
   border-radius: 14px;
+  min-height: 300px;
   background:
-    radial-gradient(500px 260px at 50% 20%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 65%),
-    radial-gradient(400px 260px at 50% 100%, color-mix(in srgb, var(--accent2) 15%, transparent), transparent 60%),
+    radial-gradient(700px 300px at 12% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 65%),
+    radial-gradient(600px 300px at 100% 100%, color-mix(in srgb, var(--accent2) 16%, transparent), transparent 60%),
     var(--hero-fill, var(--surface));
   border: 1px solid color-mix(in srgb, var(--border) 40%, var(--accent) 40%);
   box-shadow:
@@ -693,37 +685,51 @@ body {
     inset 0 1px 0 color-mix(in srgb, var(--accent) 15%, transparent);
   overflow: hidden;
 }
-.art-frame::before {
-  content: "";
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(300px 100px at 50% 90%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+/* Background layer: the illustration lives here, faded + slightly blurred so it
+   reads as atmosphere while the chart stays legible on top. */
+.art-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
   pointer-events: none;
+  opacity: 0.25;
+  filter: blur(0.4px);
+  transition: opacity 300ms ease;
 }
+.art-frame:hover .art-backdrop { opacity: 0.35; }
 .art-hero {
   width: 100%;
-  max-width: 280px;
+  max-width: 460px;
+  transform: scale(1.05);
   filter:
-    drop-shadow(0 20px 30px color-mix(in srgb, var(--accent) 35%, transparent))
-    drop-shadow(0 8px 12px color-mix(in srgb, var(--accent2) 25%, transparent));
+    drop-shadow(0 24px 40px color-mix(in srgb, var(--accent) 40%, transparent))
+    drop-shadow(0 8px 16px color-mix(in srgb, var(--accent2) 30%, transparent));
   transition: transform 300ms ease, filter 300ms ease;
 }
-.art-frame:hover .art-hero {
-  transform: translateY(-2px) scale(1.02);
-  filter:
-    drop-shadow(0 24px 36px color-mix(in srgb, var(--accent) 50%, transparent))
-    drop-shadow(0 10px 16px color-mix(in srgb, var(--accent2) 35%, transparent));
+/* Foreground layer: chart + caption sit above the illustration */
+.art-foreground {
+  position: relative;
+  z-index: 1;
+  padding: 16px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .art-caption {
+  align-self: flex-start;
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 11.5px;
+  font-size: 11px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--text-dim);
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-2) 82%, var(--accent) 15%);
   border: 1px solid color-mix(in srgb, var(--border) 40%, var(--accent) 30%);
+  backdrop-filter: blur(6px);
 }
 .art-caption .glyph {
   color: var(--accent);
@@ -748,4 +754,111 @@ body {
   100% { filter: drop-shadow(0 20px 30px color-mix(in srgb, var(--accent) 30%, transparent)) drop-shadow(0 8px 12px color-mix(in srgb, var(--accent2) 20%, transparent)); }
 }
 .art-hero { animation: art-shimmer 6s ease-in-out infinite; }
+
+/* ============================================================
+   Asset chart — TradingView-style interactive price chart
+   ============================================================ */
+.asset-chart {
+  background: color-mix(in srgb, var(--data-fill, var(--surface)) 78%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, var(--accent) 25%);
+  border-radius: 12px;
+  padding: 12px 14px 6px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.asset-chart-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.asset-chart-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ap-value {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--text) 92%, var(--accent) 20%);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.ap-unit { font-size: 11px; color: var(--text-mute); letter-spacing: 0.05em; text-transform: uppercase; }
+.ap-change {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+.ap-change.up   { color: #34d399; background: color-mix(in srgb, #34d399 15%, var(--surface-2)); border-color: color-mix(in srgb, #34d399 30%, transparent); }
+.ap-change.down { color: #f87171; background: color-mix(in srgb, #f87171 15%, var(--surface-2)); border-color: color-mix(in srgb, #f87171 30%, transparent); }
+.ap-change-range { font-size: 10px; opacity: 0.75; letter-spacing: 0.04em; font-weight: 500; }
+.ap-hover {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  border: 1px solid var(--border);
+  margin-left: 4px;
+}
+
+.asset-chart-ranges {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--surface-2) 65%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.r-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: auto;
+  transition: color 120ms ease, background 120ms ease;
+}
+.r-btn:hover { color: var(--text); background: color-mix(in srgb, var(--surface-2) 50%, var(--accent) 10%); }
+.r-btn.active {
+  color: color-mix(in srgb, var(--text) 92%, var(--accent) 40%);
+  background: color-mix(in srgb, var(--surface-2) 50%, var(--accent) 20%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.asset-chart-body {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+}
+.asset-chart-msg {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.asset-chart-msg.error { color: var(--amber); }
+
+.asset-chart-foot {
+  font-size: 10.5px;
+  color: var(--text-mute);
+  text-align: right;
+  padding-top: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* uPlot overrides so the chart matches the dark theme */
+.asset-chart .u-legend { display: none; }
+.asset-chart .u-cursor-x, .asset-chart .u-cursor-y {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
+}
 

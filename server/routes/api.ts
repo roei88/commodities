@@ -4,6 +4,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startRun, getRun, subscribe } from "../runs.ts";
 import { loadRegistry, listDedicatedPlans, resolvePlanFor, getCommodity, validateRawPlan } from "../plans/resolver.ts";
+import { getChart, type ChartRange } from "../engine/data/chart.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = join(__dirname, "..", "..", "plans", "assets");
@@ -94,6 +95,21 @@ api.get("/stream/:runId", (req, res) => {
     clearInterval(hb);
     unsub();
   });
+});
+
+// Fetch OHLC price chart data for a commodity at a given range. Cached.
+const RANGES: ChartRange[] = ["1D", "5D", "1M", "3M", "6M", "1Y", "5Y", "ALL"];
+api.get("/chart/:commodityId", async (req, res) => {
+  const c = getCommodity(req.params.commodityId);
+  if (!c) return res.status(404).json({ error: "unknown commodity" });
+  const rawRange = String(req.query.range ?? "1M").toUpperCase() as ChartRange;
+  if (!RANGES.includes(rawRange)) return res.status(400).json({ error: "invalid range", allowed: RANGES });
+  try {
+    const chart = await getChart(c.symbol, rawRange);
+    res.json(chart);
+  } catch (e: any) {
+    res.status(502).json({ error: e?.message ?? "chart fetch failed" });
+  }
 });
 
 // Fetch the finished result (report markdown + chart data). Survives refresh.
