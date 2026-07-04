@@ -68,6 +68,33 @@ export async function fredHistory(seriesId: string, days = 400): Promise<FredHis
   return value;
 }
 
+// Turn a FRED series (typically monthly) into daily "bars" by carrying the last
+// known value forward to each subsequent business day. Used for commodities that
+// have no free daily feed but do have a FRED benchmark series (e.g. Robusta via
+// IMF PCOFFROBUSDM). Ticks are not daily-real; the report must label this.
+export async function fredMonthlyAsBars(
+  seriesId: string,
+  minDays = 400
+): Promise<{ date: string; open: number; high: number; low: number; close: number; volume: number }[]> {
+  const hist = await fredHistory(seriesId, Math.max(minDays * 2, 800));
+  if (hist.length === 0) return [];
+  // Forward-fill month-end -> daily business days.
+  const bars: { date: string; open: number; high: number; low: number; close: number; volume: number }[] = [];
+  const sorted = hist.slice().sort((a, b) => a.date.localeCompare(b.date));
+  let idx = 0;
+  const start = new Date(sorted[0].date);
+  const end = new Date();
+  for (let cur = new Date(start); cur <= end; cur.setUTCDate(cur.getUTCDate() + 1)) {
+    const dow = cur.getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    const d = cur.toISOString().slice(0, 10);
+    while (idx + 1 < sorted.length && sorted[idx + 1].date <= d) idx++;
+    const v = sorted[idx].value;
+    bars.push({ date: cur.toISOString(), open: v, high: v, low: v, close: v, volume: 0 });
+  }
+  return bars.slice(-Math.max(minDays + 40, 120));
+}
+
 // Real-yield history = DGS10 - T10YIE aligned by date. Returns [] on failure.
 export async function fredRealYieldHistory(days = 400): Promise<FredHistoryPoint[]> {
   try {

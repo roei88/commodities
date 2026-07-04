@@ -21,6 +21,8 @@ export interface CommodityMeta {
   cotVenueNote?: string; // e.g. "NYMEX proxy for ICE Brent"
   dataUnavailable?: boolean; // set when no live source exists
   dataUnavailableReason?: string;
+  fredSeries?: string;      // e.g. "PCOFFROBUSDM" - FRED IMF series when Yahoo lacks the ticker
+  fredSeriesNote?: string;
   // Seed reference quote from the user's snapshot (last known; "market closed").
   seed?: { sell: number; buy: number; changePct: number };
 }

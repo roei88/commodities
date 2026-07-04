@@ -10,6 +10,8 @@ interface MCInput {
   seed: string;
   eventDayMultipliers: Record<number, number>; // dayIndex -> vol multiplier
   appliedCatalysts?: { label: string; date: string; dayIndex: number; volMultiplier: number }[];
+  anchorDate?: string;      // ISO date for "day 1" (typically the last observed bar date)
+  tradingDates?: string[];  // if supplied, day t is dated tradingDates[t]
 }
 
 function gaussian(rng: seedrandom.PRNG): number {
@@ -32,6 +34,19 @@ function roundP(n: number): number {
   const abs = Math.abs(n);
   const dp = abs >= 1000 ? 1 : abs >= 10 ? 2 : 4;
   return Number(n.toFixed(dp));
+}
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2026-07-06" -> "Mon Jul 6"
+function shortLabel(iso: string): string {
+  try {
+    const d = new Date(iso + (iso.length === 10 ? "T00:00:00Z" : ""));
+    return `${DAY_NAMES[d.getUTCDay()]} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  } catch {
+    return iso;
+  }
 }
 
 export function runMonteCarlo(plan: PlanAsset, input: MCInput): MonteCarloResult {
@@ -89,8 +104,11 @@ export function runMonteCarlo(plan: PlanAsset, input: MCInput): MonteCarloResult
 
   const fan: FanPoint[] = dayValues.map((day, t) => {
     const sorted = [...day].sort((a, b) => a - b);
+    const isoDate = input.tradingDates?.[t];
+    // Prefer real dates ("Mon Jul 6") over abstract "Day t+1"
+    const label = isoDate ? shortLabel(isoDate) : `Day ${t + 1}`;
     return {
-      label: `Day ${t + 1}`,
+      label,
       p5: roundP(pct(sorted, 5)),
       p25: roundP(pct(sorted, 25)),
       p50: roundP(pct(sorted, 50)),
@@ -100,17 +118,27 @@ export function runMonteCarlo(plan: PlanAsset, input: MCInput): MonteCarloResult
   });
 
   // Interval ladder: interpolate median + p25/p75 across intraday steps.
-  const stepsPerDay = Math.max(1, Math.round(24 / mc.ladderIntervalHours));
+  // Downsized presentation: show a max of ~2 intraday steps per day so the
+  // ladder stays readable in the UI; downstream can still scroll.
+  const stepsPerDay = Math.max(1, Math.min(2, Math.round(24 / mc.ladderIntervalHours)));
+  const stepHours = Math.round(24 / stepsPerDay);
+  // Session labels for 1-2 steps per day.
+  const sessionLabels = stepsPerDay === 1 ? ["close"] : ["mid-session", "close"];
   const ladder: LadderRow[] = [];
   const anchor0 = { p25: input.spot, p50: input.spot, p75: input.spot };
   for (let t = 0; t < H; t++) {
     const from = t === 0 ? anchor0 : { p25: fan[t - 1].p25, p50: fan[t - 1].p50, p75: fan[t - 1].p75 };
     const to = { p25: fan[t].p25, p50: fan[t].p50, p75: fan[t].p75 };
+    const isoDate = input.tradingDates?.[t] ?? `Day ${t + 1}`;
     for (let s = 1; s <= stepsPerDay; s++) {
       const f = s / stepsPerDay;
-      const hour = ((s * mc.ladderIntervalHours) % 24).toString().padStart(2, "0");
+      const _hourText = `${(s * stepHours % 24).toString().padStart(2, "0")}:00`;
+      // Prefer real date + session for readability.
+      const label = input.tradingDates?.[t]
+        ? `${shortLabel(isoDate)} · ${sessionLabels[s - 1] ?? _hourText}`
+        : `${isoDate} · ${_hourText}`;
       ladder.push({
-        label: `Day ${t + 1} · ${hour}:00`,
+        label,
         target: roundP(from.p50 + (to.p50 - from.p50) * f),
         lo: roundP(from.p25 + (to.p25 - from.p25) * f),
         hi: roundP(from.p75 + (to.p75 - from.p75) * f),

@@ -117,6 +117,13 @@ export async function runPipeline(
       redFlags.push({ where: "price", message: `Latest bar is stale (weekend/closed market) — bands built off a stale spot.` });
       emit("flag", `RED FLAG: latest bar appears stale.`);
     }
+    if (ohlc.source.startsWith("FRED ")) {
+      redFlags.push({
+        where: "price",
+        message: `${commodity.label} has no free daily feed — using ${commodity.fredSeries} (monthly IMF price forward-filled to daily). Realized vol and technicals reflect monthly resolution; treat intraday bands as coarse.`,
+      });
+      emit("flag", `RED FLAG: source is monthly (FRED ${commodity.fredSeries}) — sub-monthly precision is not real.`);
+    }
   } catch (e: any) {
     redFlags.push({ where: "price", message: `All OHLC sources failed: ${e?.message ?? e}` });
     emit("error", `RED FLAG: could not fetch any price data — ${e?.message ?? e}`);
@@ -265,6 +272,14 @@ export async function runPipeline(
     const seed = `${commodity.symbol}|${quote.asOf.slice(0, 10)}|${planHash}`;
     const { multipliers, applied } = mapCatalystsToDays(catalystsInSpan, quote.asOf, horizon);
     if (applied.length) emit("ok", `${applied.length} catalyst(s) mapped into Monte-Carlo event days.`);
+    // Build the trading-date list once so both the fan and the ladder can label with real dates.
+    const tradingDates: string[] = [];
+    const cur = new Date(quote.asOf);
+    while (tradingDates.length < horizon) {
+      cur.setUTCDate(cur.getUTCDate() + 1);
+      const d = cur.getUTCDay();
+      if (d !== 0 && d !== 6) tradingDates.push(cur.toISOString().slice(0, 10));
+    }
     montecarlo = runMonteCarlo(plan, {
       spot: quote.price,
       dailyVolPct,
@@ -274,6 +289,8 @@ export async function runPipeline(
       seed,
       eventDayMultipliers: multipliers,
       appliedCatalysts: applied,
+      anchorDate: quote.asOf,
+      tradingDates,
     });
     const last = montecarlo.fan[montecarlo.fan.length - 1];
     emit("ok", `MC median ${last.p50} · 90% band ${last.p5}–${last.p95} · seed ${seed}`);

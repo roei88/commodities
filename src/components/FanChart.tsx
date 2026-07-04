@@ -3,6 +3,12 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import type { FanPoint } from "../../shared/types.ts";
 
+// Read the CSS variable at draw time so the fan chart matches the commodity theme.
+function currentAccentHex(): string {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--accent-hex").trim();
+  return v || "#4c8dff";
+}
+
 // Renders the Monte-Carlo percentile fan as filled bands (p5-p95, p25-p75) plus
 // the median line. uPlot is canvas-based so thousands of points stay smooth.
 export default function FanChart({ fan, spot, unit }: { fan: FanPoint[]; spot: number; unit: string }) {
@@ -36,7 +42,7 @@ export default function FanChart({ fan, spot, unit }: { fan: FanPoint[]; spot: n
         { label: "p5", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
         { label: "p75", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
         { label: "p25", stroke: "transparent", value: (_u: uPlot, v: number | null) => fmt(v, unit) },
-        { label: "median", stroke: "#4c8dff", width: 2, value: (_u: uPlot, v: number | null) => fmt(v, unit) },
+        { label: "median", stroke: currentAccentHex(), width: 2, value: (_u: uPlot, v: number | null) => fmt(v, unit) },
       ],
       bands: [
         { series: [1, 2], fill: "rgba(76,141,255,0.10)" },

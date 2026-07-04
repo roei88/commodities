@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CommodityMeta, LogLine, RunResult } from "../shared/types.ts";
 import { streamRun } from "./lib/sse.ts";
 import { renderMarkdown, downloadFile } from "./lib/markdown.ts";
+import { applyTheme, themeFor } from "./lib/theme.ts";
 import FanChart from "./components/FanChart.tsx";
 import IntervalLadder from "./components/IntervalLadder.tsx";
 
@@ -51,6 +52,9 @@ export default function App() {
 
   // Cleanup: close any open SSE stream on unmount.
   useEffect(() => () => { closeRef.current?.(); closeRef.current = null; }, []);
+
+  // Commodity-aware theming — applies the accent + glow to the whole page.
+  useEffect(() => { applyTheme(selected || undefined); }, [selected]);
 
   const commodity = commodities.find((c) => c.id === selected);
   const spanValid = useMemo(() => !!from && !!to && new Date(to) > new Date(from), [from, to]);
@@ -243,8 +247,19 @@ export default function App() {
 
         {tab === "report" && result && (
           <div className="report-grid">
-            <div className="card">
-              <div className="export-row">
+            <div className="card hero">
+              <div className="export-row" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span className="commodity-badge">
+                  <span className="glyph">{themeFor(result.commodity.id).glyph}</span>
+                  <strong>{result.commodity.label}</strong>
+                  <span style={{ opacity: 0.6 }}>· {result.commodity.venue} · {result.commodity.unit}</span>
+                </span>
+                {result.confidence && (
+                  <span className={`confidence-pill ${result.confidence.label}`}>
+                    Confidence: {result.confidence.label} · {result.confidence.score}/10
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
                 <button className="btn-sm" onClick={exportMd}>Export .md</button>
                 <button className="btn-sm" onClick={exportHtml}>Export .html</button>
               </div>
@@ -252,13 +267,13 @@ export default function App() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {result.montecarlo && (
-                <div className="card">
+                <div className="card data">
                   <h3>Monte-Carlo fan</h3>
                   <FanChart fan={result.montecarlo.fan} spot={result.montecarlo.spot} unit={result.commodity.unit} />
                 </div>
               )}
               {result.montecarlo && (
-                <div className="card">
+                <div className="card data">
                   <h3>Interval ladder ({result.commodity.unit})</h3>
                   <IntervalLadder rows={result.montecarlo.ladder} unit={result.commodity.unit} />
                 </div>

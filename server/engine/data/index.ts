@@ -1,6 +1,7 @@
 import { yahooOHLC, type Bar } from "./yahoo.ts";
 import { stooqOHLC } from "./stooq.ts";
 import { twelvedataOHLC } from "./twelvedata.ts";
+import { fredMonthlyAsBars } from "./fred.ts";
 import { isBarStale } from "./cache.ts";
 import type { CommodityMeta, Quote } from "../../../shared/types.ts";
 
@@ -47,6 +48,21 @@ export async function getOHLC(commodity: CommodityMeta, minDays: number): Promis
       return { bars, source: `Twelve Data (${commodity.twelvedata})`, attempts };
     } catch (e: any) {
       attempts.push({ source: "twelvedata", ok: false, note: e?.message ?? "error" });
+    }
+  }
+
+  // 4. FRED monthly-as-daily (for commodities with no daily feed but a benchmark series).
+  if (commodity.fredSeries) {
+    try {
+      const bars = await fredMonthlyAsBars(commodity.fredSeries, minDays);
+      attempts.push({ source: "fred-monthly", ok: true, note: `${bars.length} bars (monthly, ffill)` });
+      return {
+        bars,
+        source: `FRED ${commodity.fredSeries} (monthly, forward-filled)`,
+        attempts,
+      };
+    } catch (e: any) {
+      attempts.push({ source: "fred-monthly", ok: false, note: e?.message ?? "error" });
     }
   }
 
