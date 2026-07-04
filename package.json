@@ -1,6 +1,6 @@
 {
   "name": "commodity-research",
-  "version": "0.2.0",
+  "version": "1.0.0-beta",
   "private": true,
   "type": "module",
   "description": "Local-first deterministic commodity price-target research app",

@@ -184,6 +184,7 @@ export default function App() {
         <div className="brand">
           <span className="brand-mark" aria-hidden>◈</span>
           <h1>Commodity Research</h1>
+          <span className="version-tag" title="App version">v{__APP_VERSION__}</span>
         </div>
         <span className="sub">deterministic price-target engine · local-first</span>
         <div className="spacer" />
