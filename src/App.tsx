@@ -5,6 +5,7 @@ import { renderMarkdown, downloadFile } from "./lib/markdown.ts";
 import { applyTheme, themeFor } from "./lib/theme.ts";
 import FanChart from "./components/FanChart.tsx";
 import IntervalLadder from "./components/IntervalLadder.tsx";
+import ReportView from "./components/ReportView.tsx";
 
 type CommodityWithPlan = CommodityMeta & { planResolution: string };
 type Status = "idle" | "running" | "done" | "error";
@@ -156,9 +157,18 @@ export default function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <h1>Commodity Research</h1>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>◈</span>
+          <h1>Commodity Research</h1>
+        </div>
         <span className="sub">deterministic price-target engine · local-first</span>
         <div className="spacer" />
+        {commodity && (
+          <span className="topbar-commodity">
+            <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
+            <span className="label">{themeFor(commodity.id).name}</span>
+          </span>
+        )}
         <StatusPill status={status} flags={result?.redFlags.length ?? 0} />
       </div>
 
@@ -246,9 +256,9 @@ export default function App() {
         )}
 
         {tab === "report" && result && (
-          <div className="report-grid">
-            <div className="card hero">
-              <div className="export-row" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div className="report-grid v2">
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="report-toolbar">
                 <span className="commodity-badge">
                   <span className="glyph">{themeFor(result.commodity.id).glyph}</span>
                   <strong>{result.commodity.label}</strong>
@@ -263,9 +273,15 @@ export default function App() {
                 <button className="btn-sm" onClick={exportMd}>Export .md</button>
                 <button className="btn-sm" onClick={exportHtml}>Export .html</button>
               </div>
-              <div className="markdown" dangerouslySetInnerHTML={{ __html: reportHtml }} />
+              {result.sections && result.sections.length ? (
+                <ReportView sections={result.sections} />
+              ) : (
+                <div className="card hero">
+                  <div className="markdown" dangerouslySetInnerHTML={{ __html: reportHtml }} />
+                </div>
+              )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div className="data-column">
               {result.montecarlo && (
                 <div className="card data">
                   <h3>Monte-Carlo fan</h3>

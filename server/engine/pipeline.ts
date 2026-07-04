@@ -11,7 +11,7 @@ import { computeBands } from "./bands.ts";
 import { computeRegime, type RegimeContext } from "./regime.ts";
 import { runMonteCarlo } from "./montecarlo.ts";
 import { backtestBands } from "./backtest.ts";
-import { assembleReport } from "./report.ts";
+import { assembleReport, assembleSections } from "./report.ts";
 import { resolvePlanFor, getCommodity } from "../plans/resolver.ts";
 import type {
   RunResult, RedFlag, LogLine, Quote, Technicals, Bands, RegimeRead,
@@ -349,7 +349,7 @@ export async function runPipeline(
 
   // ---- Assemble report ----
   emit("step", `Assembling report (TL;DR + Detail)...`);
-  const markdown = assembleReport({
+  const reportInput = {
     commodity, plan, planResolution: resolution, planHash, span,
     quote, dataSource, technicals,
     bands: bandsComputed.bands,
@@ -364,8 +364,10 @@ export async function runPipeline(
     montecarlo, optionsImplied, backtest, catalystsInSpan,
     invalidations, confidence, tldr,
     redFlags, generatedAt,
-  });
-  emit("done", `Report ready (${markdown.length} chars, ${redFlags.length} RED FLAG${redFlags.length === 1 ? "" : "s"}).`);
+  };
+  const markdown = assembleReport(reportInput);
+  const sections = assembleSections(reportInput);
+  emit("done", `Report ready (${markdown.length} chars, ${sections.length} sections, ${redFlags.length} RED FLAG${redFlags.length === 1 ? "" : "s"}).`);
 
   return {
     runId: "", commodity, planId: plan.id, planResolution: resolution, span,
@@ -378,6 +380,7 @@ export async function runPipeline(
     etfFlow: flow ? { ticker: flow.ticker, changePct5d: flow.changePct5d, changePct20d: flow.changePct20d, source: flow.source } : null,
     montecarlo, optionsImplied, backtest, catalystsInSpan,
     invalidations, confidence, tldr,
+    sections,
     redFlags, markdown, finishedAt: new Date().toISOString(),
   };
 }

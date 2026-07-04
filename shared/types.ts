@@ -172,6 +172,21 @@ export interface RedFlag {
   message: string;
 }
 
+// Structured report sections — one card per entry in the on-screen render.
+// The Markdown assembler still emits a single string for export; this parallel
+// structure is what the SPA uses to pick per-role framing (motifs, headers).
+export type SectionRole =
+  | "tldr" | "setup" | "regime" | "bands" | "montecarlo" | "options"
+  | "termstructure" | "positioning" | "macro" | "flow" | "catalysts"
+  | "backtest" | "invalidation" | "confidence" | "qualitative"
+  | "redflags" | "ceilings" | "sources";
+
+export interface ReportSection {
+  role: SectionRole;
+  title: string;
+  markdown: string; // section body as markdown (rendered by client)
+}
+
 export interface RunResult {
   runId: string;
   commodity: CommodityMeta;
@@ -201,6 +216,7 @@ export interface RunResult {
   invalidations: { horizon: string; upsideBreak: number; downsideBreak: number }[];
   confidence: { score: number; label: "high" | "medium" | "low"; drivers: string[] };
   tldr: string;
+  sections: ReportSection[];
   redFlags: RedFlag[];
   markdown: string;
   finishedAt: string;
