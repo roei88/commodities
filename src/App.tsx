@@ -175,26 +175,8 @@ export default function App() {
       </div>
 
       <div className="container">
-        {/* Controls + illustration alongside */}
+        {/* Selection first, then illustration + live chart below */}
         <div className="controls-wrap">
-          {commodity && (
-            <div className="art-frame">
-              <div className="art-backdrop" aria-hidden>
-                <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
-              </div>
-              <div className="art-foreground">
-                {!(commodity as any).dataUnavailable ? (
-                  <AssetChart commodityId={commodity.id} unit={commodity.unit} />
-                ) : (
-                  <div className="asset-chart-msg">Live chart unavailable for this commodity.</div>
-                )}
-                <div className="art-caption">
-                  <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
-                  <span>{themeFor(commodity.id).name}</span>
-                </div>
-              </div>
-            </div>
-          )}
         <div className="controls">
           <div className="field">
             <label>Commodity</label>
@@ -249,6 +231,24 @@ export default function App() {
             {status === "running" ? "Running…" : "Run research"}
           </button>
         </div>
+        {commodity && (
+          <div className="art-frame">
+            <div className="art-backdrop" aria-hidden>
+              <CommodityArt id={commodity.id} className="art-hero" ariaLabel={themeFor(commodity.id).name} />
+            </div>
+            <div className="art-foreground">
+              {!(commodity as any).dataUnavailable ? (
+                <AssetChart commodityId={commodity.id} unit={commodity.unit} />
+              ) : (
+                <div className="asset-chart-msg">Live chart unavailable for this commodity.</div>
+              )}
+              <div className="art-caption">
+                <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
+                <span>{themeFor(commodity.id).name}</span>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Tabs */}
