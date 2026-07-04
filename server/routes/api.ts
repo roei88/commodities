@@ -6,6 +6,7 @@ import { startRun, getRun, subscribe } from "../runs.ts";
 import { loadRegistry, listDedicatedPlans, resolvePlanFor, getCommodity, validateRawPlan } from "../plans/resolver.ts";
 import { getChart, type ChartRange } from "../engine/data/chart.ts";
 import { fredMonthlyAsBars } from "../engine/data/fred.ts";
+import { getMarketNote } from "../engine/data/note.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = join(__dirname, "..", "..", "plans", "assets");
@@ -135,6 +136,18 @@ api.get("/chart/:commodityId", async (req, res) => {
       }
     }
     return res.status(502).json({ error: yahooErr?.message ?? "chart fetch failed" });
+  }
+});
+
+// Data-driven market note + real news headlines for a commodity.
+api.get("/note/:commodityId", async (req, res) => {
+  const c = getCommodity(req.params.commodityId);
+  if (!c) return res.status(404).json({ error: "unknown commodity" });
+  try {
+    const note = await getMarketNote(c);
+    res.json(note);
+  } catch (e: any) {
+    res.status(502).json({ error: e?.message ?? "note unavailable" });
   }
 });
 

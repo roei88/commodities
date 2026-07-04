@@ -8,6 +8,7 @@ import IntervalLadder from "./components/IntervalLadder.tsx";
 import ReportView from "./components/ReportView.tsx";
 import CommodityArt from "./components/CommodityArt.tsx";
 import AssetChart from "./components/AssetChart.tsx";
+import MarketNote from "./components/MarketNote.tsx";
 
 type CommodityWithPlan = CommodityMeta & { planResolution: string };
 type Status = "idle" | "running" | "done" | "error";
@@ -79,6 +80,7 @@ export default function App() {
     setResult(null);
     setLog([]);
     setChartError(null);
+    lastRunKey.current = ""; // allow the auto-run to fire for the new selection
   }
 
   function run() {
@@ -86,7 +88,6 @@ export default function App() {
     setStatus("running");
     setLog([]);
     setResult(null);
-    setTab("activity");
     closeRef.current?.();
     const commodityAtStart = selected;
     runCommodityRef.current = commodityAtStart;
@@ -145,6 +146,23 @@ export default function App() {
         setStatus("error");
       });
   }
+
+  // Auto-run: the report generates in seconds, so there's no need for a manual
+  // Run button. Whenever a valid commodity + span is set, kick off the run
+  // (debounced so editing the dates doesn't fire on every keystroke). A ref
+  // tracks the last-run params so we don't re-run identical inputs.
+  const lastRunKey = useRef<string>("");
+  useEffect(() => {
+    if (!selected || !spanValid || commodity?.dataUnavailable) return;
+    const key = `${selected}|${from}|${to}`;
+    if (key === lastRunKey.current) return;
+    const t = setTimeout(() => {
+      if (`${selected}|${from}|${to}` !== key) return;
+      lastRunKey.current = key;
+      run();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [selected, from, to, spanValid, commodity?.dataUnavailable]);
 
   const reportHtml = useMemo(() => (result ? renderMarkdown(result.markdown) : ""), [result]);
 
@@ -227,11 +245,16 @@ export default function App() {
                 ⚠ Span end is in the past — projection horizon defaults to ~5 trading days.
               </div>
             )}
+            {selected && !commodity?.dataUnavailable && (
+              <div className="autorun-hint">
+                {status === "running"
+                  ? "Generating report…"
+                  : status === "done"
+                    ? "Report ready below · edit the commodity or span to regenerate"
+                    : "Report generates automatically"}
+              </div>
+            )}
           </div>
-
-          <button className="run-btn" disabled={!canRun} onClick={run}>
-            {status === "running" ? "Running…" : "Run research"}
-          </button>
         </div>
         {commodity && (() => {
           const unavailable = !!(commodity as any).dataUnavailable;
@@ -253,11 +276,14 @@ export default function App() {
               </div>
               <div className="art-foreground">
                 {!unavailable && (
-                  <AssetChart
-                    commodityId={commodity.id}
-                    unit={commodity.unit}
-                    onError={setChartError}
-                  />
+                  <>
+                    <AssetChart
+                      commodityId={commodity.id}
+                      unit={commodity.unit}
+                      onError={setChartError}
+                    />
+                    <MarketNote commodityId={commodity.id} />
+                  </>
                 )}
                 <div className="art-caption">
                   <span className="glyph" aria-hidden>{themeFor(commodity.id).glyph}</span>
